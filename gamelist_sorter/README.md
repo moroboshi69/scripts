@@ -28,3 +28,8 @@ If you've got a handheld running ArkOS, dArkOS, or a custom Linux setup with a m
 * A Linux environment running EmulationStation (tested on handhelds like the R36S and similar Rockchip devices).
 * Read/write access to `~/.emulationstation/`.
 * `sudo` privileges if you need the script to restart the `emulationstation` systemd service.
+
+## Installation and execution
+
+* Put files in /roms/tools
+* Run ES Gamelist Sorter.sh from Options/Tools
