@@ -2,8 +2,8 @@
 # ==============================================================================
 # Title:        FinalBurn Neo Vertical (TATE) Manager
 # Author:       moroboshi69
-# Description:  Interactive curses UI with flicker-free event-driven rendering
-#               and full hardware controller support.
+# Description:  Interactive terminal utility to enable or disable TATE mode
+#               for FinalBurn Neo, managing arcade options and controller remap files.
 # ==============================================================================
 
 import curses
@@ -89,6 +89,7 @@ GAMES = [
 
 
 class HandheldInput:
+  """Reads Linux input event nodes to process physical gamepad inputs."""
 
   def __init__(self):
     self.fd = None
@@ -97,6 +98,7 @@ class HandheldInput:
     self.find_controller_device()
 
   def find_controller_device(self):
+    """Scans input event paths for a matching gamepad device node."""
     for event_path in sorted(glob.glob("/dev/input/event*")):
       try:
         name_path = (
@@ -121,6 +123,7 @@ class HandheldInput:
         pass
 
   def poll_action(self):
+    """Polls the input file descriptor and maps hardware events to menu actions."""
     if not self.fd:
       return None
 
@@ -134,7 +137,7 @@ class HandheldInput:
         _, _, ev_type, code, value = struct.unpack("llHhi", data)
 
         action = None
-        if ev_type == 1:  # Key event
+        if ev_type == 1:
           if code in [103, 544]:
             action = "NAV_UP"
           elif code in [108, 545]:
@@ -144,16 +147,16 @@ class HandheldInput:
           elif code == 311:
             action = "PAGE_DOWN"
           elif code == 305:
-            action = "MOVE_UP"  # Button A
+            action = "MOVE_UP"
           elif code == 304:
-            action = "MOVE_DOWN"  # Button B
+            action = "MOVE_DOWN"
           elif code == 307:
             action = "SORT_MENU"
           elif code == 705:
             action = "START"
           elif code == 704:
             action = "SELECT"
-        elif ev_type == 3:  # Axis event
+        elif ev_type == 3:
           if code in [1, 17]:
             if value < -10000:
               action = "NAV_UP"
@@ -194,6 +197,7 @@ class HandheldInput:
 
 
 def check_tate_status():
+  """Checks if the TATE option is set in arcade.opt and remap files exist."""
   opt_active = False
   if os.path.exists(OPT_FILE):
     with open(OPT_FILE, "r") as f:
@@ -208,6 +212,7 @@ def check_tate_status():
 
 
 def enable_tate():
+  """Writes the TATE option to arcade.opt and generates remap files for listed games quietly."""
   os.makedirs(REMAP_DIR, exist_ok=True)
   os.makedirs(OPT_DIR, exist_ok=True)
 
@@ -264,6 +269,7 @@ input_turbo_period = "6"
 
 
 def disable_tate():
+  """Removes the TATE option from arcade.opt and deletes managed remap files."""
   if os.path.exists(OPT_FILE):
     with open(OPT_FILE, "r") as f:
       lines = f.readlines()
@@ -284,12 +290,14 @@ def disable_tate():
 
 
 def run_menu(stdscr):
+  """Runs the curses interface loop."""
   curses.curs_set(0)
   stdscr.keypad(True)
   curses.start_color()
   curses.init_pair(1, curses.COLOR_GREEN, curses.COLOR_BLACK)
   curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
   curses.init_pair(3, curses.COLOR_BLACK, curses.COLOR_WHITE)
+  curses.init_pair(4, curses.COLOR_CYAN, curses.COLOR_BLACK)
 
   hw_input = HandheldInput()
   current_row = 0
@@ -303,7 +311,6 @@ def run_menu(stdscr):
       "Exit",
   ]
 
-  # Set input timeout to 100ms so we block efficiently without hammering CPU/display
   stdscr.timeout(100)
   redraw_needed = True
 
@@ -314,20 +321,18 @@ def run_menu(stdscr):
 
       is_active = check_tate_status()
 
-      # Title
       title = " FinalBurn Neo Vertical (TATE) Manager "
       stdscr.addstr(1, max(0, (w - len(title)) // 2), title, curses.A_BOLD)
       subtitle = "Author: moroboshi69"
       stdscr.addstr(2, max(0, (w - len(subtitle)) // 2), subtitle, curses.A_DIM)
 
-      # Status display
       stdscr.addstr(4, 4, "STATUS: ", curses.A_BOLD)
       if is_active:
         stdscr.addstr("ENABLED", curses.color_pair(1) | curses.A_BOLD)
       else:
         stdscr.addstr("DISABLED", curses.color_pair(2) | curses.A_BOLD)
 
-      start_y = 7
+      start_y = 6
       for idx, item in enumerate(menu_items):
         x = 6
         y = start_y + idx
@@ -338,13 +343,18 @@ def run_menu(stdscr):
         else:
           stdscr.addstr(y, x, f"   {item} ")
 
+      info_box_y = start_y + len(menu_items) + 1
+      stdscr.addstr(info_box_y, 4, "TATE MODE CHANGES:", curses.color_pair(4) | curses.A_BOLD)
+      stdscr.addstr(info_box_y + 1, 6, "• Rotates display for vertical arcade orientation")
+      stdscr.addstr(info_box_y + 2, 6, "• Maps movement to Right Analog Stick & rotates face buttons")
+      stdscr.addstr(info_box_y + 3, 6, "• Binds Turbo Enable toggle to R3 (Right Stick click)")
+
       if status_message:
         stdscr.addstr(h - 2, 4, status_message[: w - 5], curses.A_ITALIC)
 
       stdscr.refresh()
       redraw_needed = False
 
-    # Wait for input (blocks up to 100ms)
     key = stdscr.getch()
     hw_action = hw_input.poll_action()
 
@@ -389,6 +399,7 @@ def run_menu(stdscr):
 
 
 def main():
+  """Entry point initializing the curses wrapper."""
   try:
     curses.wrapper(run_menu)
   except Exception:
