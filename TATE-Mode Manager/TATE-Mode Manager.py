@@ -212,7 +212,7 @@ def check_tate_status():
 
 
 def enable_tate():
-  """Writes the TATE option to arcade.opt and generates remap files for listed games quietly."""
+  """Writes the TATE option to arcade.opt and generates remap files for listed games."""
   os.makedirs(REMAP_DIR, exist_ok=True)
   os.makedirs(OPT_DIR, exist_ok=True)
 
